@@ -534,7 +534,7 @@ export function GameBoard() {
         // Add new head
         player.snake.unshift(newHead)
 
-        // Check if snake eats food
+        // Check if snake eats food - use exact coordinate matching
         const foodIndex = food.findIndex((f) => f.x === newHead.x && f.y === newHead.y)
 
         if (foodIndex !== -1) {

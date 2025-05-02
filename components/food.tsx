@@ -4,6 +4,7 @@ interface FoodProps {
 }
 
 export function Food({ position, boardSize }: FoodProps) {
+  // Use exact positioning to ensure visual and logical positions match
   return (
     <div
       className="absolute bg-red-500 rounded-full animate-pulse"
