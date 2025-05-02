@@ -11,16 +11,17 @@ import { useToast } from "@/hooks/use-toast"
 
 // Game constants
 const BOARD_SIZE = 20
-const INITIAL_SPEED = 150
 const FOOD_VALUE = 1
 
 // Player colors
-const PLAYER_COLORS = ["emerald", "sky", "amber", "purple"]
+const PLAYER_COLORS = ["emerald", "sky", "amber", "purple", "pink", "red"]
 const COLOR_CLASSES = {
   emerald: "bg-[#00ff9d]",
   sky: "bg-[#00d2ff]",
   amber: "bg-[#ffcc00]",
   purple: "bg-[#d580ff]",
+  pink: "bg-[#ff80bf]",
+  red: "bg-[#ff5555]",
 }
 
 // Direction constants
@@ -31,6 +32,9 @@ const DIRECTIONS = {
   RIGHT: { x: 1, y: 0 },
 }
 
+// Initial directions for each player
+const INITIAL_DIRECTIONS = [DIRECTIONS.RIGHT, DIRECTIONS.RIGHT, DIRECTIONS.LEFT, DIRECTIONS.LEFT]
+
 // Player controls
 const PLAYER_CONTROLS = [
   { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" },
@@ -39,36 +43,193 @@ const PLAYER_CONTROLS = [
   { up: "t", down: "g", left: "f", right: "h" },
 ]
 
-// Initial snake positions
-const INITIAL_POSITIONS = [
-  [
-    { x: 2, y: 2 },
-    { x: 1, y: 2 },
-    { x: 0, y: 2 },
-  ],
-  [
-    { x: 2, y: BOARD_SIZE - 3 },
-    { x: 1, y: BOARD_SIZE - 3 },
-    { x: 0, y: BOARD_SIZE - 3 },
-  ],
-  [
-    { x: BOARD_SIZE - 3, y: 2 },
-    { x: BOARD_SIZE - 2, y: 2 },
-    { x: BOARD_SIZE - 1, y: 2 },
-  ],
-  [
-    { x: BOARD_SIZE - 3, y: BOARD_SIZE - 3 },
-    { x: BOARD_SIZE - 2, y: BOARD_SIZE - 3 },
-    { x: BOARD_SIZE - 1, y: BOARD_SIZE - 3 },
-  ],
-]
+// Update the type definition
+type MapType = "classic" | "death-star" | "kingdoms" | "lake"
+type ColorOption = "random" | "emerald" | "sky" | "amber" | "purple" | "pink" | "red"
 
-// Initial directions
-const INITIAL_DIRECTIONS = [DIRECTIONS.RIGHT, DIRECTIONS.RIGHT, DIRECTIONS.LEFT, DIRECTIONS.LEFT]
+// Update the MAP_SPAWN_POSITIONS to include lake instead of pangea
+const MAP_SPAWN_POSITIONS = {
+  classic: [
+    [
+      { x: 2, y: 2 },
+      { x: 1, y: 2 },
+      { x: 0, y: 2 },
+    ],
+    [
+      { x: 2, y: BOARD_SIZE - 3 },
+      { x: 1, y: BOARD_SIZE - 3 },
+      { x: 0, y: BOARD_SIZE - 3 },
+    ],
+    [
+      { x: BOARD_SIZE - 3, y: 2 },
+      { x: BOARD_SIZE - 2, y: 2 },
+      { x: BOARD_SIZE - 1, y: 2 },
+    ],
+    [
+      { x: BOARD_SIZE - 3, y: BOARD_SIZE - 3 },
+      { x: BOARD_SIZE - 2, y: BOARD_SIZE - 3 },
+      { x: BOARD_SIZE - 1, y: BOARD_SIZE - 3 },
+    ],
+  ],
+  "death-star": [
+    [
+      { x: 5, y: 5 },
+      { x: 4, y: 5 },
+      { x: 3, y: 5 },
+    ],
+    [
+      { x: 5, y: BOARD_SIZE - 6 },
+      { x: 4, y: BOARD_SIZE - 6 },
+      { x: 3, y: BOARD_SIZE - 6 },
+    ],
+    [
+      { x: BOARD_SIZE - 6, y: 5 },
+      { x: BOARD_SIZE - 5, y: 5 },
+      { x: BOARD_SIZE - 4, y: 5 },
+    ],
+    [
+      { x: BOARD_SIZE - 6, y: BOARD_SIZE - 6 },
+      { x: BOARD_SIZE - 5, y: BOARD_SIZE - 6 },
+      { x: BOARD_SIZE - 4, y: BOARD_SIZE - 6 },
+    ],
+  ],
+  kingdoms: [
+    [
+      { x: 4, y: 4 },
+      { x: 3, y: 4 },
+      { x: 2, y: 4 },
+    ],
+    [
+      { x: 4, y: 15 },
+      { x: 3, y: 15 },
+      { x: 2, y: 15 },
+    ],
+    [
+      { x: 15, y: 4 },
+      { x: 16, y: 4 },
+      { x: 17, y: 4 },
+    ],
+    [
+      { x: 15, y: 15 },
+      { x: 16, y: 15 },
+      { x: 17, y: 15 },
+    ],
+  ],
+  lake: [
+    [
+      { x: 2, y: 2 },
+      { x: 1, y: 2 },
+      { x: 0, y: 2 },
+    ],
+    [
+      { x: 2, y: BOARD_SIZE - 3 },
+      { x: 1, y: BOARD_SIZE - 3 },
+      { x: 0, y: BOARD_SIZE - 3 },
+    ],
+    [
+      { x: BOARD_SIZE - 3, y: 2 },
+      { x: BOARD_SIZE - 2, y: 2 },
+      { x: BOARD_SIZE - 1, y: 2 },
+    ],
+    [
+      { x: BOARD_SIZE - 3, y: BOARD_SIZE - 3 },
+      { x: BOARD_SIZE - 2, y: BOARD_SIZE - 3 },
+      { x: BOARD_SIZE - 1, y: BOARD_SIZE - 3 },
+    ],
+  ],
+}
+
+// Death Star obstacle generation function - fixed to be a circle
+const generateDeathStarObstacles = () => {
+  const obstacles = []
+  const centerX = BOARD_SIZE / 2 - 0.5
+  const centerY = BOARD_SIZE / 2 - 0.5
+  const radius = 9 // Large playable circle
+
+  for (let x = 0; x < BOARD_SIZE; x++) {
+    for (let y = 0; y < BOARD_SIZE; y++) {
+      const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2))
+      if (distance > radius) {
+        obstacles.push({ x, y })
+      }
+    }
+  }
+  return obstacles
+}
+
+// Update the Kingdoms obstacle generation function to make the middle bridge wider
+const generateKingdomsObstacles = () => {
+  const obstacles = []
+
+  // Create walls for the four kingdoms
+  for (let x = 0; x < BOARD_SIZE; x++) {
+    for (let y = 0; y < BOARD_SIZE; y++) {
+      // Create walls but leave bridges in the middle and at the edges
+      // Wider middle bridges (3 cells wide instead of 2)
+      if (
+        // Horizontal walls (leave bridges at middle and edges)
+        ((y === 9 || y === 10) && !(x < 2 || (x >= 7 && x <= 12) || x > BOARD_SIZE - 3)) ||
+        // Vertical walls (leave bridges at middle and edges)
+        ((x === 9 || x === 10) && !(y < 2 || (y >= 7 && y <= 12) || y > BOARD_SIZE - 3))
+      ) {
+        obstacles.push({ x, y })
+      }
+    }
+  }
+  return obstacles
+}
+
+// Replace the Pangea obstacle generation with Lake obstacle generation
+const generateLakeObstacles = () => {
+  const obstacles = []
+
+  // Create a trapezoid lake in the middle
+  const topWidth = 10
+  const bottomWidth = 6
+  const height = 6
+
+  const topStart = (BOARD_SIZE - topWidth) / 2
+  const topEnd = topStart + topWidth
+  const bottomStart = (BOARD_SIZE - bottomWidth) / 2
+  const bottomEnd = bottomStart + bottomWidth
+
+  const lakeTop = 7
+  const lakeBottom = lakeTop + height
+
+  for (let y = lakeTop; y < lakeBottom; y++) {
+    // Calculate the left and right boundaries for this row
+    const rowPosition = (y - lakeTop) / height
+    const leftBoundary = Math.floor(topStart + (bottomStart - topStart) * rowPosition)
+    const rightBoundary = Math.ceil(topEnd + (bottomEnd - topEnd) * rowPosition)
+
+    // Add obstacles for this row of the lake
+    for (let x = leftBoundary; x < rightBoundary; x++) {
+      obstacles.push({ x, y })
+    }
+  }
+
+  return obstacles
+}
+
+// Update the MAP_OBSTACLES object
+const MAP_OBSTACLES = {
+  classic: [],
+  "death-star": generateDeathStarObstacles(),
+  kingdoms: generateKingdomsObstacles(),
+  lake: generateLakeObstacles(),
+}
 
 type PlayerType = "human" | "ai"
 type Position = { x: number; y: number }
 type Direction = { x: number; y: number }
+
+interface GameSettings {
+  playerTypes: PlayerType[]
+  playerCount: number
+  gameSpeed: number
+  mapType: MapType
+  playerColors: ColorOption[]
+}
 
 interface Player {
   type: PlayerType
@@ -81,6 +242,13 @@ interface Player {
   colorClass: string
 }
 
+// Function to get a random color that's not already used
+const getRandomColor = (usedColors: string[]): string => {
+  const availableColors = PLAYER_COLORS.filter((color) => !usedColors.includes(color))
+  if (availableColors.length === 0) return PLAYER_COLORS[0] // Fallback
+  return availableColors[Math.floor(Math.random() * availableColors.length)]
+}
+
 export function GameBoard() {
   const [players, setPlayers] = useState<Player[]>([])
   const [food, setFood] = useState<Position[]>([])
@@ -88,24 +256,41 @@ export function GameBoard() {
   const [gamePaused, setGamePaused] = useState(false)
   const [gameOver, setGameOver] = useState(false)
   const [winner, setWinner] = useState<number | null>(null)
-  const [speed, setSpeed] = useState(INITIAL_SPEED)
+  const [speed, setSpeed] = useState(150)
+  const [mapType, setMapType] = useState<MapType>("classic")
+  const [obstacles, setObstacles] = useState<Position[]>([])
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
 
-  // Initialize players
-  const initializePlayers = (playerTypes: PlayerType[]) => {
-    const newPlayers = playerTypes.map((type, index) => ({
-      type,
-      snake: [...INITIAL_POSITIONS[index]],
-      direction: INITIAL_DIRECTIONS[index],
-      nextDirection: INITIAL_DIRECTIONS[index],
-      score: 0,
-      alive: true,
-      color: PLAYER_COLORS[index],
-      colorClass: COLOR_CLASSES[PLAYER_COLORS[index]],
-    }))
+  // Initialize players with color selection
+  const initializePlayers = (playerTypes: PlayerType[], selectedMapType: MapType, playerColors: ColorOption[]) => {
+    const usedColors: string[] = []
+
+    const newPlayers = playerTypes.map((type, index) => {
+      // Determine color
+      let color: string
+      if (playerColors[index] === "random") {
+        color = getRandomColor(usedColors)
+      } else {
+        color = playerColors[index]
+      }
+
+      usedColors.push(color)
+
+      return {
+        type,
+        snake: [...MAP_SPAWN_POSITIONS[selectedMapType][index]],
+        direction: INITIAL_DIRECTIONS[index],
+        nextDirection: INITIAL_DIRECTIONS[index],
+        score: 0,
+        alive: true,
+        color,
+        colorClass: COLOR_CLASSES[color as keyof typeof COLOR_CLASSES],
+      }
+    })
+
     setPlayers(newPlayers)
-    generateFood(4, newPlayers)
+    generateFood(playerTypes.length, newPlayers)
   }
 
   // Generate food at random positions
@@ -125,8 +310,15 @@ export function GameBoard() {
       occupiedPositions.add(`${f.x},${f.y}`)
     })
 
+    // Mark obstacles as occupied
+    obstacles.forEach((o) => {
+      occupiedPositions.add(`${o.x},${o.y}`)
+    })
+
     // Generate new food in unoccupied positions
-    while (newFood.length < count) {
+    let attempts = 0
+    while (newFood.length < count && attempts < 100) {
+      attempts++
       const position = {
         x: Math.floor(Math.random() * BOARD_SIZE),
         y: Math.floor(Math.random() * BOARD_SIZE),
@@ -143,14 +335,17 @@ export function GameBoard() {
   }
 
   // Start the game
-  const startGame = (playerTypes: PlayerType[]) => {
-    initializePlayers(playerTypes)
+  const startGame = (settings: GameSettings) => {
+    setSpeed(settings.gameSpeed)
+    setMapType(settings.mapType)
+    setObstacles(MAP_OBSTACLES[settings.mapType] || [])
+    initializePlayers(settings.playerTypes, settings.mapType, settings.playerColors)
     setGameStarted(true)
     setGameOver(false)
     setWinner(null)
     toast({
       title: "Game Started",
-      description: "Use the controls to move your snake!",
+      description: `Map: ${settings.mapType.toUpperCase()} - Speed: ${settings.gameSpeed}ms`,
       className: "game-font",
     })
   }
@@ -167,7 +362,6 @@ export function GameBoard() {
     setGamePaused(false)
     setGameOver(false)
     setWinner(null)
-    setSpeed(INITIAL_SPEED)
   }
 
   // Pause/resume the game
@@ -184,6 +378,13 @@ export function GameBoard() {
     // Check if out of bounds
     if (position.x < 0 || position.x >= BOARD_SIZE || position.y < 0 || position.y >= BOARD_SIZE) {
       return false
+    }
+
+    // Check if colliding with obstacles
+    for (const obstacle of obstacles) {
+      if (position.x === obstacle.x && position.y === obstacle.y) {
+        return false
+      }
     }
 
     // Check if colliding with any snake
@@ -466,6 +667,21 @@ export function GameBoard() {
                 )),
               )}
             </div>
+
+            {/* Obstacles */}
+            {obstacles.map((obstacle, index) => (
+              <div
+                key={`obstacle-${index}`}
+                className="absolute bg-[#2a2a40]"
+                style={{
+                  left: `${(obstacle.x / BOARD_SIZE) * 100}%`,
+                  top: `${(obstacle.y / BOARD_SIZE) * 100}%`,
+                  width: `${100 / BOARD_SIZE}%`,
+                  height: `${100 / BOARD_SIZE}%`,
+                  zIndex: 15,
+                }}
+              />
+            ))}
 
             {/* Food */}
             {food.map((f, index) => (
